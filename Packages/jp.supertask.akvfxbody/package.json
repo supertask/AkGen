@@ -1,0 +1,16 @@
+{
+    "author": "Tasuku Takahashi",
+    "dependencies": {
+        "com.unity.mathematics": "1.1.0",
+        "com.unity.visualeffectgraph": "7.3.1"
+    },
+    "description": "Azure Kinect plugin for Visual Effect Graph and body tracking plugin",
+    "displayName": "AkvfxBody",
+    "keywords": [ "unity" ],
+    "license": "SEE LICENSE IN LICENSE",
+    "name": "jp.supertask.akvfxbody",
+    "repository": "github:supertask/AkGen",
+    "unity": "2019.3",
+    "unityRelease": "15f1",
+    "version": "1.0.2"
+}
