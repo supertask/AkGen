@@ -2,10 +2,12 @@
 
 Buffer<uint> ColorBuffer;
 Buffer<uint> DepthBuffer;
+Buffer<uint> BodyIndexBuffer;
 Buffer<float> XYTable;
 float MaxDepth;
 RWTexture2D<float4> ColorMap;
 RWTexture2D<float4> PositionMap;
+RWTexture2D<float4> BodyIndexMap;
 
 float3 uint_to_float3(uint raw)
 {
@@ -28,9 +30,13 @@ void Unproject(uint2 id : SV_DispatchThreadID)
     // Color sample
     float3 color = uint_to_float3(ColorBuffer[idx]);
 
+    // Body index map sample
+    float bodyIndex = uint_to_ushort(BodyIndexBuffer[idx >> 2], idx & 1); //idx >> 2: 0~3,4~7,8~11.. are a same value on Buffer
+    //float3 bodyIndex = uint_to_float3(BodyIndexBuffer[idx >> 2]); //idx >> 2: 0~3,4~7,8~11.. are a same value on Buffer
+
     // Depth sample (int16 -> float)
     float depth = uint_to_ushort(DepthBuffer[idx >> 1], idx & 1) / 1000.0;
-    float mask = depth > 0 && depth < MaxDepth;
+    float mask = depth > 0 && depth < MaxDepth && (bodyIndex <= 0);
     float z = lerp(MaxDepth, depth, mask);
 
     // XY table lookup
@@ -39,4 +45,9 @@ void Unproject(uint2 id : SV_DispatchThreadID)
     // Map
     ColorMap[id] = float4(color, mask);
     PositionMap[id] = float4(xy * z, z, mask);
+
+    //bodyIndex >= 255 means the pixel is background.
+    //https://microsoft.github.io/Azure-Kinect-Body-Tracking/release/0.9.x/group__btdefinitions.html
+    float bodyIndexPixel = bodyIndex >= 255 ? 0.0 : 1.0;
+    BodyIndexMap[id] = float4(bodyIndexPixel, bodyIndexPixel, bodyIndexPixel, 1.0);
 }
