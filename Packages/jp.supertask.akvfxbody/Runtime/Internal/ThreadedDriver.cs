@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 namespace Akvfx {
 
-sealed class ThreadedDriver : IDisposable
+public sealed class ThreadedDriver : IDisposable
 {
     #region Public properties and methods
 

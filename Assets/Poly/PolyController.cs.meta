@@ -1,0 +1,23 @@
+fileFormatVersion: 2
+guid: 705e72744c7be9b45a2fb1d8f3e3aa12
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - colorMap: {instanceID: 0}
+  - positionMap: {instanceID: 0}
+  - bodyIndexMap: {instanceID: 0}
+  - depthMap: {instanceID: 0}
+  - edgeMap: {instanceID: 0}
+  - _deviceSettings: {fileID: 11400000, guid: 78d2d0c19822b07428bb2b8b4ed7c2fb, type: 2}
+  - _compute: {fileID: 7200000, guid: 705ccb545be85484faeebed5b00e01e8, type: 3}
+  - _colorMap: {instanceID: 0}
+  - _positionMap: {instanceID: 0}
+  - _bodyIndexMap: {instanceID: 0}
+  - _depthMap: {instanceID: 0}
+  - _edgeMap: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

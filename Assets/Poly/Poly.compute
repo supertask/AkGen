@@ -1,0 +1,124 @@
+﻿#pragma kernel GetPoints
+#pragma kernel CalcCelluarNoise
+#pragma kernel ResetCelluarNoise
+
+RWTexture2D<float4> ColorMap;
+RWTexture2D<float4> PositionMap;
+RWTexture2D<float4> BodyIndexMap;
+RWTexture2D<float4> DepthMap;
+RWTexture2D<float4> EdgeMap;
+RWTexture2D<float4> CellularMap;
+
+RWStructuredBuffer<float2> debug;
+StructuredBuffer<uint2> rPoints;
+AppendStructuredBuffer<uint2> wPoints; //xy positions for delaunay triangulation
+int MaxPointNum;
+groupshared int pointIndex;
+
+inline float remap(float x, float in_min, float in_max,
+                   float out_min, float out_max) {
+    float t = (x - in_min) / (in_max - in_min);
+    return lerp(out_min, out_max, t);
+}
+
+float nrand(float2 uv)
+{
+    return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+float3 hsv(float h, float s, float v)
+{
+    float4 t = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    float3 p = abs(frac(float3(h,h,h) + t.xyz) * 6.0 - float3(t.w,t.w,t.w));
+    //return float3(0,0,0);
+    return v * lerp(float3(t.x,t.x,t.x), clamp(p - float3(t.x,t.x,t.x), 0.0, 1.0), s);
+}
+
+[numthreads(32, 32, 1)]
+void GetPoints(uint2 id : SV_DispatchThreadID)
+{
+    uint w, h;
+    BodyIndexMap.GetDimensions(w, h);
+
+    //int isEdge = EdgeMap[id].r > 0;
+    int isBody = BodyIndexMap[id].r > 0.0;
+    //float edgePointRatio = 0.6 * MaxPointNum / (w * h);
+    float bodyPointRatio = 0.4 * MaxPointNum / (w * h);
+    //int binary = isEdge && nrand(id.xy * float2(w,h)) < edgePointRatio;
+    int isBodyPoint = isBody && nrand(id.xy) < bodyPointRatio;
+    //float4 color = float4(isBodyPoint, isBodyPoint, isBodyPoint, 1.0);
+    //CellularMap[id] = color;
+    if (isBodyPoint) { wPoints.Append(id.xy); }
+}
+
+[numthreads(1024, 1, 1)]
+void CalcCelluarNoise(uint id : SV_DispatchThreadID)
+{
+    uint w, h;
+    CellularMap.GetDimensions(w, h);
+
+    if (0 < rPoints[id].x && rPoints[id].x < w &&
+        0 < rPoints[id].y && rPoints[id].y < h)
+    {
+        float2 xy = float2(rPoints[id].x / float(w), rPoints[id].y / float(h));
+        float4 color = float4(
+            nrand(float2(xy.x,0)),
+            nrand(float2(xy.y,0)),
+            nrand(float2(id,0)),
+            1.0
+        );
+        int MaxRadius = 50; // 300px
+        for(int r = 0; r < MaxRadius; r++) {
+            for(int angle = 0; angle < 360; angle++) {
+                float theta = radians(angle);
+                float x = r * sin(theta);
+                float y = r * cos(theta);
+                float2 vicinityXy = rPoints[id] + float2(x,y);
+                if (CellularMap[vicinityXy].r <= 0 && BodyIndexMap[vicinityXy].r > 0) {
+                    CellularMap[vicinityXy] = color;
+                }
+            }
+        }
+    }
+}
+
+[numthreads(32, 32, 1)]
+void ResetCelluarNoise(uint2 id : SV_DispatchThreadID)
+{
+    CellularMap[id] = float4(0,0,0,1);
+}
+
+/*
+
+[numthreads(32, 32, 1)]
+void CalcCelluarNoise(uint2 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    CellularMap.GetDimensions(width, height);
+    float w = float(width);
+    float h = float(height);
+
+    float2 uv = float2(id.x / w, id.y / h);
+    uv.x *= w / h;
+
+    float m_dist = 1.0;  // minimum distance
+    float3 m_point;        // minimum position
+
+    [loop]
+    for (uint i = 0; i < MaxPointNum; i++) {
+        float2 p = float2(pointsRead[i].x / w, pointsRead[i].y / h);
+        float dist = distance(uv, p);
+
+        // Keep the closer distance
+        if (dist < m_dist) {
+            m_dist = dist;
+            m_point = hsv(nrand(p), 1.0, 1.0);
+            //m_point = p;
+        }
+    }
+
+    //float4 color = float4(m_dist, m_dist, m_dist, 1.0);
+    float4 color = float4(m_point, 1.0); 
+    CellularMap[id] = color;
+}
+*/

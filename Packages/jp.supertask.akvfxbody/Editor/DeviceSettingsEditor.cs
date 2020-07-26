@@ -23,6 +23,7 @@ sealed class DeviceSettingsEditor : Editor
     SerializedProperty _powerIs60Hz;
 
     SerializedProperty _maxDepth;
+    SerializedProperty _edgeSensitivity;
 
     static class Styles
     {
@@ -48,6 +49,7 @@ sealed class DeviceSettingsEditor : Editor
         _powerIs60Hz = serializedObject.FindProperty("_powerIs60Hz");
 
         _maxDepth = serializedObject.FindProperty("_maxDepth");
+        _edgeSensitivity = serializedObject.FindProperty("_edgeSensitivity");
     }
 
     public override void OnInspectorGUI()
@@ -82,6 +84,7 @@ sealed class DeviceSettingsEditor : Editor
         EditorGUILayout.PropertyField(_powerIs60Hz, Styles.powerIs60Hz);
 
         EditorGUILayout.PropertyField(_maxDepth);
+        EditorGUILayout.PropertyField(_edgeSensitivity);
 
         serializedObject.ApplyModifiedProperties();
     }

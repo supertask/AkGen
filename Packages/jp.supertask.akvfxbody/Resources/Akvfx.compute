@@ -1,4 +1,5 @@
 #pragma kernel Unproject
+#pragma kernel BakeEdges
 
 Buffer<uint> ColorBuffer;
 Buffer<uint> DepthBuffer;
@@ -8,6 +9,16 @@ float MaxDepth;
 RWTexture2D<float4> ColorMap;
 RWTexture2D<float4> PositionMap;
 RWTexture2D<float4> BodyIndexMap;
+RWTexture2D<float4> DepthMap;
+
+half EdgeSensitivity;
+RWTexture2D<float4> EdgeMap;
+
+inline float remap(float x, float in_min, float in_max,
+                   float out_min, float out_max) {
+    float t = (x - in_min) / (in_max - in_min);
+    return lerp(out_min, out_max, t);
+}
 
 float3 uint_to_float3(uint raw)
 {
@@ -36,7 +47,8 @@ void Unproject(uint2 id : SV_DispatchThreadID)
 
     // Depth sample (int16 -> float)
     float depth = uint_to_ushort(DepthBuffer[idx >> 1], idx & 1) / 1000.0;
-    float mask = depth > 0 && depth < MaxDepth && (bodyIndex <= 0);
+
+    float mask = depth > 0 && depth < MaxDepth;
     float z = lerp(MaxDepth, depth, mask);
 
     // XY table lookup
@@ -50,4 +62,36 @@ void Unproject(uint2 id : SV_DispatchThreadID)
     //https://microsoft.github.io/Azure-Kinect-Body-Tracking/release/0.9.x/group__btdefinitions.html
     float bodyIndexPixel = bodyIndex >= 255 ? 0.0 : 1.0;
     BodyIndexMap[id] = float4(bodyIndexPixel, bodyIndexPixel, bodyIndexPixel, 1.0);
+
+    float depth_gray = remap(depth, 0.0, MaxDepth, 0.0, 1.0); //Remap (0.0, MaxDepth) -> (0.0, 1.0)
+    DepthMap[id] = float4(depth_gray, depth_gray, depth_gray, 1.0);
+}
+
+[numthreads(8, 8, 1)]
+void BakeEdges(uint2 id : SV_DispatchThreadID)
+{
+    uint w, h;
+    DepthMap.GetDimensions(w, h);
+
+    //
+    // Roberts cross operator
+    // Refered to: https://github.com/keijiro/KinoContour/blob/master/Assets/Kino/Contour/Shader/Contour.shader
+    //
+    float2 uv0 = float2(id.xy); //uint2 -> float
+    float2 uv1 = uv0 + float2(1, 1);
+    float2 uv2 = uv0 + float2(1, 0);
+    float2 uv3 = uv0 + float2(0, 1);
+
+    if (uv1.x < w && uv1.y < h) {
+        float3 c0 = DepthMap[uv0].rgb;
+        float3 c1 = DepthMap[uv1].rgb;
+        float3 c2 = DepthMap[uv2].rgb;
+        float3 c3 = DepthMap[uv3].rgb;
+
+        float3 cg1 = c1 - c0;
+        float3 cg2 = c3 - c2;
+        float cg = sqrt(dot(cg1, cg1) + dot(cg2, cg2));
+        half edge = cg >= (1.0 - EdgeSensitivity);
+        EdgeMap[uv0] = edge;
+    }
 }

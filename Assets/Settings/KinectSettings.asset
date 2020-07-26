@@ -24,3 +24,4 @@ MonoBehaviour:
   _enableBlc: 0
   _powerIs60Hz: 1
   _maxDepth: 6.6
+  _edgeSensitivity: 0.75

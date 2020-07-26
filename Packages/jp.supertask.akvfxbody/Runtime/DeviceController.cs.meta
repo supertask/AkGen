@@ -4,6 +4,11 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
+  - colorMap: {fileID: 8400000, guid: 11894b1b3b544504d8fb6c249d7b00e5, type: 2}
+  - positionMap: {fileID: 8400000, guid: 03d888122daf20f4b810ff94e6bc1443, type: 2}
+  - bodyIndexMap: {fileID: 8400000, guid: a3faf6469c69bb74c8d6014a64dd0776, type: 2}
+  - depthMap: {fileID: 8400000, guid: 5cba7acf3dfff454db1f37e2513db024, type: 2}
+  - edgeMap: {fileID: 8400000, guid: e82639dc7e998f842b1e7912d9dd6573, type: 2}
   - _deviceSettings: {instanceID: 0}
   - _compute: {fileID: 7200000, guid: 3ca4db0dbaa8e30428ad4f1a346df783, type: 3}
   executionOrder: 0

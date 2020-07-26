@@ -21,7 +21,8 @@ public sealed class DeviceSettings : ScriptableObject
     [SerializeField] bool _enableBlc = false;
     [SerializeField] bool _powerIs60Hz = true;
 
-    [SerializeField, Range(0, 6.6f)] float _maxDepth = 1;
+    [SerializeField, Range(0, 6.6f)] float _maxDepth = 6.6f;
+    [SerializeField, Range(0, 1.0f)] float _edgeSensitivity = 0.75f; //0.75f for depth mapping  
 
     #endregion
 
@@ -74,6 +75,9 @@ public sealed class DeviceSettings : ScriptableObject
     public float maxDepth
       { get => _maxDepth;
         set => _maxDepth = value; }
+    public float edgeSensitivity
+      { get => _edgeSensitivity;
+        set => _edgeSensitivity = value; }
 
     #endregion
 

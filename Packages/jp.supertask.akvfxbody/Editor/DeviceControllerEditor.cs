@@ -8,16 +8,20 @@ namespace Akvfx {
 sealed class DeviceControllerEditor : Editor
 {
     SerializedProperty _deviceSettings;
-    SerializedProperty bodyIndexMap;
     SerializedProperty colorMap;
     SerializedProperty positionMap;
+    SerializedProperty bodyIndexMap;
+    SerializedProperty depthMap;
+    SerializedProperty edgeMap;
 
     void OnEnable()
     {
       _deviceSettings = serializedObject.FindProperty("_deviceSettings");
-      bodyIndexMap = serializedObject.FindProperty("bodyIndexMap");
       colorMap = serializedObject.FindProperty("colorMap");
       positionMap = serializedObject.FindProperty("positionMap");
+      bodyIndexMap = serializedObject.FindProperty("bodyIndexMap");
+      depthMap = serializedObject.FindProperty("depthMap");
+      edgeMap = serializedObject.FindProperty("edgeMap");
     }
 
     public override void OnInspectorGUI()
@@ -27,6 +31,8 @@ sealed class DeviceControllerEditor : Editor
         EditorGUILayout.PropertyField(colorMap);
         EditorGUILayout.PropertyField(positionMap);
         EditorGUILayout.PropertyField(bodyIndexMap);
+        EditorGUILayout.PropertyField(depthMap);
+        EditorGUILayout.PropertyField(edgeMap);
         serializedObject.ApplyModifiedProperties();
     }
 }
