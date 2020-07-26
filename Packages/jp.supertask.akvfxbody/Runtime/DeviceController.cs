@@ -189,10 +189,10 @@ public class DeviceController : MonoBehaviour
         _compute.Dispatch(KID.BakeEdges, _colorMap.width / 8, _colorMap.height / 8, 1);
 
         //Debug
-        Graphics.CopyTexture(this._colorMap, this.colorMap);
-        Graphics.CopyTexture(this._positionMap, this.positionMap);
+        //Graphics.CopyTexture(this._colorMap, this.colorMap);
+        //Graphics.CopyTexture(this._positionMap, this.positionMap);
         //Graphics.CopyTexture(this._bodyIndexMap, this.bodyIndexMap);
-        Graphics.CopyTexture(this._depthMap, this.depthMap);
+        //Graphics.CopyTexture(this._depthMap, this.depthMap);
         //Graphics.CopyTexture(this._edgeMap, this.edgeMap);
     }
 

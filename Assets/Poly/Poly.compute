@@ -1,19 +1,24 @@
 ﻿#pragma kernel GetPoints
-#pragma kernel CalcCelluarNoise
-#pragma kernel ResetCelluarNoise
+#pragma kernel ResetCellularNoise
+#pragma kernel ResetExistingLineMap
+#pragma kernel CalcCellularNoise
+#pragma kernel ModifyCellularNoise
+#pragma kernel CalcDelaunayTriangulationLine
 
 RWTexture2D<float4> ColorMap;
 RWTexture2D<float4> PositionMap;
 RWTexture2D<float4> BodyIndexMap;
 RWTexture2D<float4> DepthMap;
 RWTexture2D<float4> EdgeMap;
-RWTexture2D<float4> CellularMap;
 
-RWStructuredBuffer<float2> debug;
+RWTexture2D<float4> CellularMap;
+RWTexture2D<float4> SeedMap; //xy = seed point of cellular noise, z = index of 'wPoints' that indicates 
+RWTexture2D<float4> ExistingLineMap;
+
 StructuredBuffer<uint2> rPoints;
 AppendStructuredBuffer<uint2> wPoints; //xy positions for delaunay triangulation
+AppendStructuredBuffer<float4> wLines; //lines of delaunay triangulation
 int MaxPointNum;
-groupshared int pointIndex;
 
 inline float remap(float x, float in_min, float in_max,
                    float out_min, float out_max) {
@@ -30,8 +35,32 @@ float3 hsv(float h, float s, float v)
 {
     float4 t = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     float3 p = abs(frac(float3(h,h,h) + t.xyz) * 6.0 - float3(t.w,t.w,t.w));
-    //return float3(0,0,0);
     return v * lerp(float3(t.x,t.x,t.x), clamp(p - float3(t.x,t.x,t.x), 0.0, 1.0), s);
+}
+
+[numthreads(32, 32, 1)]
+void ResetCellularNoise(uint2 id : SV_DispatchThreadID)
+{
+    uint w, h;
+    CellularMap.GetDimensions(w, h);
+    if (0 <= id.x && id.x < w &&
+        0 <= id.y && id.y < h)
+    {
+        CellularMap[id] = float4(0,0,0,1);
+        SeedMap[id] = float4(0,0,0,1);
+    }
+}
+
+[numthreads(32, 32, 1)]
+void ResetExistingLineMap(uint2 id : SV_DispatchThreadID)
+{
+    uint w, h;
+    ExistingLineMap.GetDimensions(w, h);
+    if (0 <= id.x && id.x < w &&
+        0 <= id.y && id.y < h)
+    {
+        ExistingLineMap[id] = float4(0,0,0,1);
+    }
 }
 
 [numthreads(32, 32, 1)]
@@ -52,19 +81,25 @@ void GetPoints(uint2 id : SV_DispatchThreadID)
 }
 
 [numthreads(1024, 1, 1)]
-void CalcCelluarNoise(uint id : SV_DispatchThreadID)
+void CalcCellularNoise(uint id : SV_DispatchThreadID)
 {
-    uint w, h;
+    float w, h;
     CellularMap.GetDimensions(w, h);
 
-    if (0 < rPoints[id].x && rPoints[id].x < w &&
-        0 < rPoints[id].y && rPoints[id].y < h)
+    float maxPointNumFloat = MaxPointNum;
+    if (0 <= id < MaxPointNum &&
+        0 <= rPoints[id].x && rPoints[id].x < w &&
+        0 <= rPoints[id].y && rPoints[id].y < h)
     {
+        float2 seedPoint = rPoints[id]; //母点
+
+        //Calc cellular noise & bake seed point map
         float2 xy = float2(rPoints[id].x / float(w), rPoints[id].y / float(h));
         float4 color = float4(
             nrand(float2(xy.x,0)),
-            nrand(float2(xy.y,0)),
-            nrand(float2(id,0)),
+            nrand(float2(0, xy.y)),
+            //nrand(float2(id/,0)), //TODO(Tsuku): 辺な円状のノイズが入る
+            nrand(id / maxPointNumFloat),
             1.0
         );
         int MaxRadius = 50; // 300px
@@ -76,6 +111,10 @@ void CalcCelluarNoise(uint id : SV_DispatchThreadID)
                 float2 vicinityXy = rPoints[id] + float2(x,y);
                 if (CellularMap[vicinityXy].r <= 0 && BodyIndexMap[vicinityXy].r > 0) {
                     CellularMap[vicinityXy] = color;
+                    SeedMap[vicinityXy] = float4(
+                        seedPoint.x / w, seedPoint.y / h,
+                        id / maxPointNumFloat, 1
+                    );
                 }
             }
         }
@@ -83,15 +122,65 @@ void CalcCelluarNoise(uint id : SV_DispatchThreadID)
 }
 
 [numthreads(32, 32, 1)]
-void ResetCelluarNoise(uint2 id : SV_DispatchThreadID)
+void ModifyCellularNoise(uint2 id : SV_DispatchThreadID)
 {
-    CellularMap[id] = float4(0,0,0,1);
+    float w, h;
+    SeedMap.GetDimensions(w, h);
+
+    float4 centerColor = CellularMap[id.xy];
+    int2 centerSeedPoint = round(SeedMap[id.xy].xy * float2(w,h));
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            int2 vicinityXy = id.xy + float2(dx, dy);
+            float4 neighborColor = CellularMap[vicinityXy];
+            if (distance(centerColor, neighborColor) != 0)
+            {
+                int2 neighborSeedPoint = round(SeedMap[vicinityXy].xy * float2(w,h)); //0~1 to 0~w, 0~1 to 0~h
+                float dist1 = distance(centerSeedPoint, vicinityXy);
+                float dist2 = distance(neighborSeedPoint, vicinityXy);
+                CellularMap[vicinityXy] = dist1 < dist2 ? centerColor : neighborColor;
+                SeedMap[vicinityXy] = dist1 < dist2 ? SeedMap[id.xy] : SeedMap[vicinityXy];
+            }
+
+            /*
+            if (0 < seedPoint.x && seedPoint.x < w &&
+                0 < seedPoint.y && seedPoint.y < h) {
+            }
+            */
+            
+        }
+    }
+}
+
+[numthreads(32, 32, 1)]
+void CalcDelaunayTriangulationLine(uint2 id : SV_DispatchThreadID)
+{
+    float4 centerColor = CellularMap[id.xy];
+    int centerSeedPointIndex = round(SeedMap[id.xy].z * MaxPointNum);
+    for (int dy = 0; dy <= 1; dy++) {
+        for (int dx = 0; dx <= 1; dx++) {
+            int2 vicinityXy = id.xy + float2(dx, dy);
+            float4 neighborColor = CellularMap[vicinityXy];
+
+            //If different color
+            if (distance(centerColor, neighborColor) != 0)
+            {
+                int neighborSeedPointIndex = round(SeedMap[vicinityXy].z * MaxPointNum); //0~1 to 0~w, 0~1 to 0~h
+                int2 ei = int2(centerSeedPointIndex, neighborSeedPointIndex);
+                if (ExistingLineMap[ei].r == 0) {
+                    ExistingLineMap[ei] = float4(1,1,1,1);
+                    float4 a = float4(SeedMap[id.xy].xy, SeedMap[vicinityXy].xy);
+                    wLines.Append(a);
+                }
+            }
+        }
+    }
 }
 
 /*
 
 [numthreads(32, 32, 1)]
-void CalcCelluarNoise(uint2 id : SV_DispatchThreadID)
+void CalcCellularNoise(uint2 id : SV_DispatchThreadID)
 {
     uint width, height;
     CellularMap.GetDimensions(width, height);
