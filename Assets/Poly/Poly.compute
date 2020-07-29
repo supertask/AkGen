@@ -16,8 +16,10 @@ RWTexture2D<float4> SeedMap; //xy = seed point of cellular noise, z = index of '
 RWTexture2D<float4> ExistingLineMap;
 
 StructuredBuffer<uint2> rPoints;
+
 AppendStructuredBuffer<uint2> wPoints; //xy positions for delaunay triangulation
-AppendStructuredBuffer<float4> wLines; //lines of delaunay triangulation
+//AppendStructuredBuffer<float4> wLines; //lines of delaunay triangulation
+AppendStructuredBuffer<uint3> wTriangles; //lines of delaunay triangulation
 int MaxPointNum;
 
 inline float remap(float x, float in_min, float in_max,
@@ -41,10 +43,10 @@ float3 hsv(float h, float s, float v)
 [numthreads(32, 32, 1)]
 void ResetCellularNoise(uint2 id : SV_DispatchThreadID)
 {
-    uint w, h;
-    CellularMap.GetDimensions(w, h);
-    if (0 <= id.x && id.x < w &&
-        0 <= id.y && id.y < h)
+    uint width, height;
+    CellularMap.GetDimensions(width, height);
+    if (0 <= id.x && id.x < width &&
+        0 <= id.y && id.y < height)
     {
         CellularMap[id] = float4(0,0,0,1);
         SeedMap[id] = float4(0,0,0,1);
@@ -54,10 +56,10 @@ void ResetCellularNoise(uint2 id : SV_DispatchThreadID)
 [numthreads(32, 32, 1)]
 void ResetExistingLineMap(uint2 id : SV_DispatchThreadID)
 {
-    uint w, h;
-    ExistingLineMap.GetDimensions(w, h);
-    if (0 <= id.x && id.x < w &&
-        0 <= id.y && id.y < h)
+    uint width, height;
+    ExistingLineMap.GetDimensions(width, height);
+    if (0 <= id.x && id.x < width &&
+        0 <= id.y && id.y < height)
     {
         ExistingLineMap[id] = float4(0,0,0,1);
     }
@@ -66,13 +68,15 @@ void ResetExistingLineMap(uint2 id : SV_DispatchThreadID)
 [numthreads(32, 32, 1)]
 void GetPoints(uint2 id : SV_DispatchThreadID)
 {
-    uint w, h;
-    BodyIndexMap.GetDimensions(w, h);
+    uint width, height;
+    BodyIndexMap.GetDimensions(width, height);
+
+    if (id.x < 0 || width <= id.x || id.y < 0 || height <= id.y) { return; }
 
     //int isEdge = EdgeMap[id].r > 0;
     int isBody = BodyIndexMap[id].r > 0.0;
     //float edgePointRatio = 0.6 * MaxPointNum / (w * h);
-    float bodyPointRatio = 0.4 * MaxPointNum / (w * h);
+    float bodyPointRatio = 0.4 * MaxPointNum / (width * height);
     //int binary = isEdge && nrand(id.xy * float2(w,h)) < edgePointRatio;
     int isBodyPoint = isBody && nrand(id.xy) < bodyPointRatio;
     //float4 color = float4(isBodyPoint, isBodyPoint, isBodyPoint, 1.0);
@@ -83,18 +87,19 @@ void GetPoints(uint2 id : SV_DispatchThreadID)
 [numthreads(1024, 1, 1)]
 void CalcCellularNoise(uint id : SV_DispatchThreadID)
 {
-    float w, h;
-    CellularMap.GetDimensions(w, h);
+    float width, height;
+    CellularMap.GetDimensions(width, height);
+
+    if (id < 0 || MaxPointNum <= id) { return; }
 
     float maxPointNumFloat = MaxPointNum;
-    if (0 <= id < MaxPointNum &&
-        0 <= rPoints[id].x && rPoints[id].x < w &&
-        0 <= rPoints[id].y && rPoints[id].y < h)
+    if (0 <= rPoints[id].x && rPoints[id].x < width &&
+        0 <= rPoints[id].y && rPoints[id].y < height)
     {
         float2 seedPoint = rPoints[id]; //母点
 
         //Calc cellular noise & bake seed point map
-        float2 xy = float2(rPoints[id].x / float(w), rPoints[id].y / float(h));
+        float2 xy = float2(rPoints[id].x / float(width), rPoints[id].y / float(height));
         float4 color = float4(
             nrand(float2(xy.x,0)),
             nrand(float2(0, xy.y)),
@@ -109,13 +114,18 @@ void CalcCellularNoise(uint id : SV_DispatchThreadID)
                 float x = r * sin(theta);
                 float y = r * cos(theta);
                 float2 vicinityXy = rPoints[id] + float2(x,y);
-                if (CellularMap[vicinityXy].r <= 0 && BodyIndexMap[vicinityXy].r > 0) {
-                    CellularMap[vicinityXy] = color;
-                    SeedMap[vicinityXy] = float4(
-                        seedPoint.x / w, seedPoint.y / h,
-                        id / maxPointNumFloat, 1
-                    );
+                if (0 <= vicinityXy.x && vicinityXy.x < width &&
+                    0 <= vicinityXy.y && vicinityXy.y < height)
+                {
+                    if (CellularMap[vicinityXy].r <= 0 && BodyIndexMap[vicinityXy].r > 0) {
+                        CellularMap[vicinityXy] = color;
+                        SeedMap[vicinityXy] = float4(
+                            seedPoint.x / width, seedPoint.y / height,
+                            id / maxPointNumFloat, 1
+                        );
+                    }
                 }
+                
             }
         }
     }
@@ -124,39 +134,42 @@ void CalcCellularNoise(uint id : SV_DispatchThreadID)
 [numthreads(32, 32, 1)]
 void ModifyCellularNoise(uint2 id : SV_DispatchThreadID)
 {
-    float w, h;
-    SeedMap.GetDimensions(w, h);
+    int width, height;
+    SeedMap.GetDimensions(width, height);
 
+    if (id.x < 0 || width <= id.x || id.y < 0 || height <= id.y) { return; }
     float4 centerColor = CellularMap[id.xy];
-    int2 centerSeedPoint = round(SeedMap[id.xy].xy * float2(w,h));
+    int2 centerSeedPoint = round(SeedMap[id.xy].xy * float2(width,height));
+
     for (int dy = -1; dy <= 1; dy++) {
         for (int dx = -1; dx <= 1; dx++) {
             int2 vicinityXy = id.xy + float2(dx, dy);
-            float4 neighborColor = CellularMap[vicinityXy];
-            if (distance(centerColor, neighborColor) != 0)
-            {
-                int2 neighborSeedPoint = round(SeedMap[vicinityXy].xy * float2(w,h)); //0~1 to 0~w, 0~1 to 0~h
-                float dist1 = distance(centerSeedPoint, vicinityXy);
-                float dist2 = distance(neighborSeedPoint, vicinityXy);
-                CellularMap[vicinityXy] = dist1 < dist2 ? centerColor : neighborColor;
-                SeedMap[vicinityXy] = dist1 < dist2 ? SeedMap[id.xy] : SeedMap[vicinityXy];
-            }
 
-            /*
-            if (0 < seedPoint.x && seedPoint.x < w &&
-                0 < seedPoint.y && seedPoint.y < h) {
+            if (0 <= vicinityXy.x && vicinityXy.x < width &&
+                0 <= vicinityXy.y && vicinityXy.y < height)
+            {
+                float4 neighborColor = CellularMap[vicinityXy];
+                if (distance(centerColor, neighborColor) != 0)
+                {
+                    int2 neighborSeedPoint = round(SeedMap[vicinityXy].xy * float2(width,height)); //0~1 to 0~w, 0~1 to 0~h
+                    float dist1 = distance(centerSeedPoint, vicinityXy);
+                    float dist2 = distance(neighborSeedPoint, vicinityXy);
+                    CellularMap[vicinityXy] = dist1 < dist2 ? centerColor : neighborColor;
+                    SeedMap[vicinityXy] = dist1 < dist2 ? SeedMap[id.xy] : SeedMap[vicinityXy];
+                }
             }
-            */
-            
         }
     }
 }
 
+/*
 [numthreads(32, 32, 1)]
 void CalcDelaunayTriangulationLine(uint2 id : SV_DispatchThreadID)
 {
     float4 centerColor = CellularMap[id.xy];
     int centerSeedPointIndex = round(SeedMap[id.xy].z * MaxPointNum);
+
+    //4近傍を見る
     for (int dy = 0; dy <= 1; dy++) {
         for (int dx = 0; dx <= 1; dx++) {
             int2 vicinityXy = id.xy + float2(dx, dy);
@@ -169,6 +182,8 @@ void CalcDelaunayTriangulationLine(uint2 id : SV_DispatchThreadID)
                 int2 ei = int2(centerSeedPointIndex, neighborSeedPointIndex);
                 if (ExistingLineMap[ei].r == 0) {
                     ExistingLineMap[ei] = float4(1,1,1,1);
+
+                    //インデックス保存した方がいい？
                     float4 a = float4(SeedMap[id.xy].xy, SeedMap[vicinityXy].xy);
                     wLines.Append(a);
                 }
@@ -176,38 +191,56 @@ void CalcDelaunayTriangulationLine(uint2 id : SV_DispatchThreadID)
         }
     }
 }
+*/
 
-/*
+
+#define TRIANGLE_POINTS_NUM 3
+
+bool isIncludedIn(int arr[TRIANGLE_POINTS_NUM], int value)
+{
+    bool included = false;
+    for (int i = 0; i < TRIANGLE_POINTS_NUM; i++) {
+        if (arr[i] == value) { included = true; }
+    }
+    return included;
+}
 
 [numthreads(32, 32, 1)]
-void CalcCellularNoise(uint2 id : SV_DispatchThreadID)
+void CalcDelaunayTriangulationLine(uint2 id : SV_DispatchThreadID)
 {
-    uint width, height;
-    CellularMap.GetDimensions(width, height);
-    float w = float(width);
-    float h = float(height);
+    int width, height;
+    BodyIndexMap.GetDimensions(width, height);
+    if (id.x < 0 || width <= id.x || id.y < 0 || height <= id.y) { return; }
+    if (BodyIndexMap[id.xy].x == 0.0) { return; }
 
-    float2 uv = float2(id.x / w, id.y / h);
-    uv.x *= w / h;
+    //8近傍を見てボロノイ点を見つける
+    //3つ
+    //float4 centerColor = CellularMap[id.xy];
+    int centerSeedPointIndex = round(SeedMap[id.xy].z * MaxPointNum);
+    int trianglePoints[TRIANGLE_POINTS_NUM] = {centerSeedPointIndex, -1, -1}; //num of neighbor seedPoints must be three
+    int index = 1;
 
-    float m_dist = 1.0;  // minimum distance
-    float3 m_point;        // minimum position
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            int2 vicinityXy = id.xy + float2(dx, dy);
+            if (0 <= vicinityXy.x && vicinityXy.x < width &&
+                0 <= vicinityXy.y && vicinityXy.y < height)
+            {
+                int neighborSeedPointIndex = round(SeedMap[vicinityXy].z * MaxPointNum); //0~1 to 0~w, 0~1 to 0~h
 
-    [loop]
-    for (uint i = 0; i < MaxPointNum; i++) {
-        float2 p = float2(pointsRead[i].x / w, pointsRead[i].y / h);
-        float dist = distance(uv, p);
+                if (neighborSeedPointIndex >= 0) {
+                    if (! isIncludedIn(trianglePoints, neighborSeedPointIndex)) {
+                        trianglePoints[index] = neighborSeedPointIndex;
+                        index++;
+                    }
+                }
 
-        // Keep the closer distance
-        if (dist < m_dist) {
-            m_dist = dist;
-            m_point = hsv(nrand(p), 1.0, 1.0);
-            //m_point = p;
+            }
         }
     }
 
-    //float4 color = float4(m_dist, m_dist, m_dist, 1.0);
-    float4 color = float4(m_point, 1.0); 
-    CellularMap[id] = color;
+    if (trianglePoints[0] >= 0 && trianglePoints[1] >= 0 && trianglePoints[2] >= 0) {
+        wTriangles.Append(int3(trianglePoints[0], trianglePoints[1], trianglePoints[2]));
+    }
+
 }
-*/
