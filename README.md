@@ -8,15 +8,32 @@ with [Visual Effect Graph].
 
 
 ## How to install
-1. Download and install the latest Azure Kinect SDK (msi or nuget).
+### 1. Download and install the latest Azure Kinect SDK (msi or nuget).
 https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/develop/docs/usage.md
-2. Download and install the latest Azure Kinect Body Tracking SDK (msi or nuget).
+
+### 2. Download and install the latest Azure Kinect Body Tracking SDK (msi or nuget).
 https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download
 
-3. Install packages from Nuget
+### 3. Install packages from Nuget
 
-4. 
+In Visual Studio of your project:
+
+```
+Tools -> Select Tools -> NuGet Package Manager-> Package Manager Console
+```
+
+![NuGet](images/NuGet.png)
+
+Excecute a command bellow
+```
+Install-Package Microsoft.Azure.Kinect.BodyTracking -Version 1.0.1
+```
+![PackageManagerConsol](images/PackageManagerConsol.png)
+
+
+### 4. Execute MoveLibraryFiles.bat in current directory.
 ![MoveLibraryFiles](images/MoveLibraryFiles.png)
+
 
 
 System Requirements
