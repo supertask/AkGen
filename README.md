@@ -27,3 +27,8 @@ doesn't support Linux at the moment.
 
 [System Requirements]:
     https://docs.microsoft.com/en-us/azure/kinect-dk/system-requirements
+
+## Acknowledgment
+Keijiro Takahashi, Akvfx, https://github.com/keijiro/Akvfx
+Keijiro Takahashi, NoiseBall4, https://github.com/keijiro/NoiseBall4
+
