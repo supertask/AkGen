@@ -139,7 +139,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!64 &53163303
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -1793,6 +1793,10 @@ PrefabInstance:
       propertyPath: drawSkeletons
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 325103643, guid: 019b917704c3c29478d778e143d411d2, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 019b917704c3c29478d778e143d411d2, type: 3}
 --- !u!1 &1277810189
@@ -1974,7 +1978,7 @@ MonoBehaviour:
   debugLinesMap: {fileID: 8400000, guid: baec9bb99c5e78d4790d19dcc8e84132, type: 2}
   _material: {fileID: 0}
   polyCompute: {fileID: 7200000, guid: 705ccb545be85484faeebed5b00e01e8, type: 3}
-  maxPointNum: 1024
+  maxPointNum: 512
 --- !u!4 &1343432286
 Transform:
   m_ObjectHideFlags: 0

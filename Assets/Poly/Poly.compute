@@ -18,7 +18,6 @@ RWTexture2D<float4> ExistingLineMap;
 StructuredBuffer<uint2> rPoints;
 
 AppendStructuredBuffer<uint2> wPoints; //xy positions for delaunay triangulation
-//AppendStructuredBuffer<float4> wLines; //lines of delaunay triangulation
 AppendStructuredBuffer<uint3> wTriangles; //lines of delaunay triangulation
 int MaxPointNum;
 
@@ -73,24 +72,27 @@ void GetPoints(uint2 id : SV_DispatchThreadID)
 
     if (id.x < 0 || width <= id.x || id.y < 0 || height <= id.y) { return; }
 
-    //int isEdge = EdgeMap[id].r > 0;
-    int isBody = BodyIndexMap[id].r > 0.0;
-    //float edgePointRatio = 0.6 * MaxPointNum / (w * h);
-    float bodyPointRatio = 0.4 * MaxPointNum / (width * height);
-    //int binary = isEdge && nrand(id.xy * float2(w,h)) < edgePointRatio;
-    int isBodyPoint = isBody && nrand(id.xy) < bodyPointRatio;
+    //int isEdgePixel = EdgeMap[id].r > 0;
+    int isBodyPixel = BodyIndexMap[id].r > 0.0;
+    //float edgePointRatio = 0.6 * MaxPointNum / (width * height);
+    float bodyPointRatio = 1.0 * MaxPointNum / (width * height);
+    //bool isEdgePoint  = isBodyPixel && isEdgePixel && nrand(id.xy * float2(width,height)) < edgePointRatio;
+    bool isBodyPoint = isBodyPixel && nrand(id.xy) < bodyPointRatio;
+
+    //TODO(Tasuku): BodyIndexMapからエッジを取り出す
+
     //float4 color = float4(isBodyPoint, isBodyPoint, isBodyPoint, 1.0);
-    //CellularMap[id] = color;
+    //if (isEdgePoint) { CellularMap[id] = float4(1,1,1,1); }
     if (isBodyPoint) { wPoints.Append(id.xy); }
 }
 
-[numthreads(1024, 1, 1)]
+[numthreads(512, 1, 1)]
 void CalcCellularNoise(uint id : SV_DispatchThreadID)
 {
     float width, height;
     CellularMap.GetDimensions(width, height);
 
-    if (id < 0 || MaxPointNum <= id) { return; }
+    if (id < 0 || MaxPointNum <= id) { return; } //FIX(Tasuku): MaxPointNumでなく実際カウントした数
 
     float maxPointNumFloat = MaxPointNum;
     if (0 <= rPoints[id].x && rPoints[id].x < width &&
@@ -107,7 +109,7 @@ void CalcCellularNoise(uint id : SV_DispatchThreadID)
             nrand(id / maxPointNumFloat),
             1.0
         );
-        int MaxRadius = 50; // 300px
+        int MaxRadius = 50; // 300px, TODO(Tasuku): Fix this later. 
         for(int r = 0; r < MaxRadius; r++) {
             for(int angle = 0; angle < 360; angle++) {
                 float theta = radians(angle);
@@ -128,6 +130,7 @@ void CalcCellularNoise(uint id : SV_DispatchThreadID)
                 
             }
         }
+
     }
 }
 

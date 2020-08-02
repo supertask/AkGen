@@ -155,7 +155,7 @@ public class PolyController: MonoBehaviour
         this.polyCompute.SetTexture(KID.CalcCellularNoise, ShaderID.CellularMap, _cellularMap);
         this.polyCompute.SetTexture(KID.CalcCellularNoise, ShaderID.SeedMap, _seedMap);
         this.polyCompute.Dispatch(
-            KID.CalcCellularNoise, maxPointNum / 1024, 1, 1);
+            KID.CalcCellularNoise, maxPointNum / 512, 1, 1);
 
         //Cellular Noise Modification
         this.polyCompute.SetTexture(KID.ModifyCellularNoise, ShaderID.CellularMap, _cellularMap);
@@ -178,7 +178,6 @@ public class PolyController: MonoBehaviour
         this.polyCompute.Dispatch(
             KID.CalcDelaunayTriangulationLine,
             this._cellularMap.width / 32, this._cellularMap.height / 32, 1);
-
 
         //Debug.Log(sw.Elapsed); //経過時間
         //sw.Stop(); //計測終了
