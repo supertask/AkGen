@@ -13,8 +13,11 @@ https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/develop/docs/usage.md
 2. Download and install the latest Azure Kinect Body Tracking SDK (msi or nuget).
 https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download
 
-3. Setup for Unity
-https://github.com/microsoft/Azure-Kinect-Samples/tree/master/body-tracking-samples/sample_unity_bodytracking
+3. Install packages from Nuget
+
+4. 
+![MoveLibraryFiles](images/MoveLibraryFiles.png)
+
 
 System Requirements
 -------------------
@@ -29,6 +32,7 @@ doesn't support Linux at the moment.
     https://docs.microsoft.com/en-us/azure/kinect-dk/system-requirements
 
 ## Acknowledgment
-Keijiro Takahashi, Akvfx, https://github.com/keijiro/Akvfx
-Keijiro Takahashi, NoiseBall4, https://github.com/keijiro/NoiseBall4
+- Keijiro Takahashi, [Akvfx](https://github.com/keijiro/Akvfx)
+- Keijiro Takahashi, [NoiseBall4] (https://github.com/keijiro/NoiseBall4)
+- Microsoft, [Body tracking samples for Unity](https://github.com/microsoft/Azure-Kinect-Samples/tree/master/body-tracking-samples/sample_unity_bodytracking)
 
