@@ -33,6 +33,7 @@ doesn't support Linux at the moment.
 
 ## Acknowledgment
 - Keijiro Takahashi, [Akvfx](https://github.com/keijiro/Akvfx)
-- Keijiro Takahashi, [NoiseBall4] (https://github.com/keijiro/NoiseBall4)
+- Keijiro Takahashi, [NoiseBall4](https://github.com/keijiro/NoiseBall4)
 - Microsoft, [Body tracking samples for Unity](https://github.com/microsoft/Azure-Kinect-Samples/tree/master/body-tracking-samples/sample_unity_bodytracking)
+
 
